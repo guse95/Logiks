@@ -1,397 +1,345 @@
 package com.example.logiks.ui
 
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.example.logiks.clustering.Cluster
-import com.example.logiks.fuzzy.FuzzyNumberGenerator
-import com.example.logiks.fuzzy.FuzzyNumber
 import com.example.logiks.clustering.FuzzyClusterer
+import com.example.logiks.fuzzy.FuzzyNumber
+import com.example.logiks.fuzzy.FuzzyNumberGenerator
 
 @Composable
-fun MainScreen() {
-
-    var alphaText by remember {
-        mutableStateOf("0.7")
-    }
-
-    var valuesCountText by remember {
-        mutableStateOf("200")
-    }
-
-    var clustersText by remember {
-        mutableStateOf("3")
+fun MainScreen(
+    modifier: Modifier = Modifier
+) {
+    var selectedTab by remember {
+        mutableStateOf(0)
     }
 
     var seedText by remember {
         mutableStateOf("12345")
     }
 
-    var values by remember {
-        mutableStateOf<List<FuzzyNumber>>(emptyList())
+    var countText by remember {
+        mutableStateOf("100")
+    }
+
+    var alphaText by remember {
+        mutableStateOf("0.7")
+    }
+
+    var clusterCountText by remember {
+        mutableStateOf("3")
+    }
+
+    var generatedValues by remember {
+        mutableStateOf(
+            FuzzyNumberGenerator.generate(
+                count = 100,
+                seed = 12345L
+            )
+        )
     }
 
     var clusters by remember {
-        mutableStateOf<List<Cluster>>(emptyList())
+        mutableStateOf<List<Cluster>>(
+            emptyList()
+        )
     }
 
-    var errorMessage by remember {
-        mutableStateOf("")
+    var generationError by remember {
+        mutableStateOf<String?>(null)
     }
 
-    var showGraph by remember {
-        mutableStateOf(false)
+    var clusteringError by remember {
+        mutableStateOf<String?>(null)
     }
 
-    var showClusterGraph by remember {
-        mutableStateOf(false)
-    }
+    var alpha: Double
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(state = rememberScrollState()),
-        verticalArrangement = Arrangement.Top
-    ) {
+    val tabs = listOf(
+        "График",
+        "Кластеры",
+        "Операции"
+    )
 
-        Text(
-            text = "Logiks"
-        )
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
 
-        Spacer(
-            modifier = Modifier.height(24.dp)
-        )
+            Column {
 
-        OutlinedTextField(
-            value = valuesCountText,
-            onValueChange = {
-                valuesCountText = it
-                errorMessage = ""
-            },
-            label = {
-                Text("Number of values (100–300)")
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        OutlinedTextField(
-            value = seedText,
-            onValueChange = {
-                seedText = it
-                errorMessage = ""
-            },
-            label = {
-                Text("Seed")
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(
-            modifier = Modifier.height(24.dp)
-        )
-
-        OutlinedTextField(
-            value = alphaText,
-            onValueChange = {
-                alphaText = it
-                errorMessage = ""
-            },
-            label = {
-                Text("Alpha")
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        OutlinedTextField(
-            value = clustersText,
-            onValueChange = {
-                clustersText = it
-                errorMessage = ""
-            },
-            label = {
-                Text("Number of clusters")
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            Button(
-                onClick = {
-                    try {
-                        val alpha = alphaText.toDouble()
-                        val count = valuesCountText.toInt()
-                        val seed = seedText.toLong()
-
-                        require(alpha > 0.0 && alpha <= 1.0) {
-                            "Alpha must be between 0 and 1"
-                        }
-
-//                        require(count in 100..300) {
-//                            "Number of values must be between 100 and 300"
-//                        }
-
-                        values = FuzzyNumberGenerator.generate(
-                            count = count,
-                            seed = seed
-                        )
-
-                        clusters = emptyList()
-                        errorMessage = ""
-                        showGraph = true
-
-                    } catch (e: Exception) {
-                        errorMessage =
-                            e.message ?: "Invalid input"
-                    }
-                }
-            ) {
-                Text("Generate values")
-            }
-
-            Button(
-                onClick = {
-                    try {
-                        if (values.isEmpty()) {
-                            errorMessage = "Сначала сгенерируйте значения"
-                            return@Button
-                        }
-
-                        val alpha = alphaText.toDouble()
-                        val clusterCount = clustersText.toInt()
-
-                        require(alpha > 0.0 && alpha <= 1.0) {
-                            "Alpha must be between 0 and 1"
-                        }
-
-                        require(clusterCount in 2..values.size) {
-                            "Cluster count must be between 2 and number of values"
-                        }
-
-                        val clusterer = FuzzyClusterer()
-
-                        clusters = clusterer.cluster(
-                            values = values,
-                            alpha = alpha,
-                            clusterCount = clusterCount
-                        )
-
-                        errorMessage = ""
-                        showClusterGraph = true
-
-                    } catch (e: Exception) {
-                        errorMessage = e.message ?: "Clustering error"
-                    }
-                }
-            ) {
-                Text("Start clustering")
-            }
-        }
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        if (values.isNotEmpty()) {
-            Text(
-                text = "Generated values: ${values.size}"
-            )
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            Text(
-                text = "Alpha: $alphaText"
-            )
-
-            Text(
-                text = "Clusters: $clustersText"
-            )
-
-//            for ((mu, sig) in fuzzyNumbers) {
-//                Text(text = "Mu: $mu, sigma: $sig")
-//            }
-    }
-
-        if (clusters.isNotEmpty()) {
-
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
-
-            Text(
-                text = "Clustering result"
-            )
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            clusters.forEach { cluster ->
-
-                Text(
-                    text = buildString {
-                        append("Cluster ${cluster.id}: ")
-                        append("${cluster.values.size} values, ")
-                        append("μ = ")
-                        append("%.3f".format(cluster.center.mu))
-                        append(", σ = ")
-                        append("%.3f".format(cluster.center.sigma))
+                TopAppBar(
+                    title = {
+                        Text("Logiks")
                     }
                 )
-            }
-        }
 
-        if (errorMessage.isNotEmpty()) {
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
-
-            Text(
-                text = errorMessage
-            )
-        }
-
-        if (showGraph) {
-            Dialog(
-                onDismissRequest = {
-                    showGraph = false
-                }
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .width(1000.dp)
-                        .height(700.dp),
-                    shape = MaterialTheme.shapes.large
+                TabRow(
+                    selectedTabIndex = selectedTab
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    start = 16.dp,
-                                    top = 12.dp,
-                                    end = 16.dp
-                                ),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+                    tabs.forEachIndexed {
+                            index,
+                            title ->
 
-                            Text(
-                                text = "Fuzzy quantities graph"
-                            )
-
-                            Button(
-                                onClick = {
-                                    showGraph = false
-                                }
-                            ) {
-                                Text("Close")
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = {
+                                selectedTab = index
+                            },
+                            text = {
+                                Text(title)
                             }
-                        }
-
-                        GraphScreen(
-                            values = values,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
                         )
                     }
                 }
             }
         }
+    ) { paddingValues ->
 
-        if (showClusterGraph) {
-            Dialog(
-                onDismissRequest = {
-                    showClusterGraph = false
-                }
-            ) {
-                Surface(
+        when (selectedTab) {
+
+            0 -> {
+
+                Column(
                     modifier = Modifier
-                        .width(1000.dp)
-                        .height(700.dp),
-                    shape = MaterialTheme.shapes.large
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    start = 16.dp,
-                                    top = 12.dp,
-                                    end = 16.dp
-                                ),
-                            horizontalArrangement =
-                                Arrangement.SpaceBetween
-                        ) {
+                    OutlinedTextField(
+                        value = seedText,
+                        onValueChange = {
+                            seedText = it
+                            generationError = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Seed")
+                        },
+                        singleLine = true
+                    )
 
-                            Text(
-                                text = "Clustered fuzzy quantities"
-                            )
+                    OutlinedTextField(
+                        value = countText,
+                        onValueChange = {
+                            countText = it
+                            generationError = null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        label = {
+                            Text("Количество величин")
+                        },
+                        singleLine = true
+                    )
 
-                            Button(
-                                onClick = {
-                                    showClusterGraph = false
-                                }
-                            ) {
-                                Text("Close")
+                    Button(
+                        onClick = {
+
+                            val seed =
+                                seedText.toLongOrNull()
+
+                            val count =
+                                countText.toIntOrNull()
+
+                            if (seed == null) {
+
+                                generationError =
+                                    "Seed должен быть целым числом"
+
+                                return@Button
                             }
-                        }
 
-                        ClusterGraphScreen(
-                            clusters = clusters,
-                            alpha = alphaText.toDouble(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
+                            if (
+                                count == null ||
+                                count !in 100..300
+                            ) {
+
+                                generationError =
+                                    "Количество должно быть от 100 до 300"
+
+                                return@Button
+                            }
+
+                            generatedValues =
+                                FuzzyNumberGenerator.generate(
+                                    count = count,
+                                    seed = seed
+                                )
+
+                            clusters =
+                                emptyList()
+
+                            generationError =
+                                null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Text("Сгенерировать")
+                    }
+
+                    generationError?.let {
+
+                        Text(
+                            text = it,
+                            color =
+                                MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(
+                                top = 8.dp
+                            )
                         )
                     }
+
+                    GraphScreen(
+                        values = generatedValues,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
                 }
+            }
+
+            1 -> {
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(16.dp)
+                ) {
+
+                    OutlinedTextField(
+                        value = alphaText,
+                        onValueChange = {
+                            alphaText = it
+                            clusteringError = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Alpha")
+                        },
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = clusterCountText,
+                        onValueChange = {
+                            clusterCountText = it
+                            clusteringError = null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        label = {
+                            Text("Количество кластеров")
+                        },
+                        singleLine = true
+                    )
+
+                    Button(
+                        onClick = {
+
+                            alpha = alphaText.toDoubleOrNull() ?: 0.7
+
+                            val clusterCount =
+                                clusterCountText.toIntOrNull()
+
+                            if (
+                                alpha == null ||
+                                alpha <= 0.0 ||
+                                alpha > 1.0
+                            ) {
+
+                                clusteringError =
+                                    "Alpha должна быть в диапазоне (0, 1]"
+
+                                return@Button
+                            }
+
+                            if (
+                                clusterCount == null ||
+                                clusterCount < 2 ||
+                                clusterCount > generatedValues.size
+                            ) {
+
+                                clusteringError =
+                                    "Количество кластеров должно быть от 2 до ${generatedValues.size}"
+
+                                return@Button
+                            }
+
+                            clusters =
+                                FuzzyClusterer().cluster(
+                                    values =
+                                        generatedValues,
+                                    alpha = alpha,
+                                    clusterCount =
+                                        clusterCount
+                                )
+
+                            clusteringError =
+                                null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    ) {
+                        Text("Разбить на кластеры")
+                    }
+
+                    clusteringError?.let {
+
+                        Text(
+                            text = it,
+                            color =
+                                MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(
+                                top = 8.dp
+                            )
+                        )
+                    }
+
+                    ClusterGraphScreen(
+                        clusters = clusters,
+                        alpha =
+                            alphaText.toDoubleOrNull()
+                                ?: 0.5,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                }
+            }
+
+            2 -> {
+
+                FuzzyOperationsScreen(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                )
             }
         }
     }
